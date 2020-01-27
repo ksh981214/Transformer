@@ -27,4 +27,6 @@ class config:
     if scheduler:
         initial_lr = 1
     else:
-        initial_lr = 0.001
+        initial_lr = 0.0001
+
+    train_set = 0.9 #test_set=0.1

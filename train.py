@@ -20,6 +20,20 @@ def train(p, transformer, print_term=1):
         Ignore Index?
         Control Learning Rate
     '''
+    def restore_sentence(idxs, idx2word):
+        '''
+            idxs: sentence by idxs
+            return: sentence by word
+        '''
+        sen = []
+        for idx in idxs:
+            word = idx2word[idx.item()]
+            #print(word)
+            if word =='<BNK>':
+                break
+            else:
+                sen.append(word)
+        return sen
     device = config.device
     batch_size = config.batch_size
     num_epoch = config.num_epoch
@@ -27,7 +41,7 @@ def train(p, transformer, print_term=1):
     warmup_steps = config.warmup_steps
     scheduler = config.scheduler
 
-    #train mode, the difference exists at Dropout or BatchNormalizatio
+    #train mode, the difference exists at Dropout or BatchNormalization
     transformer.train()
 
     #Xavier Initialization
@@ -45,40 +59,37 @@ def train(p, transformer, print_term=1):
     if scheduler:
         step_num = 0
         f = lambda step_num:model_dim**(-0.5) * torch.min(torch.tensor([(step_num+1)**(-0.5), (step_num+1)*warmup_steps**(-1.5)]))
-        #f = lambda step_num:step_num
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer=opt, lr_lambda=f)
 
     #Start Epoch
     total_loss = 0
-    num_sen = len(p.src_idx)
-
+    
     #train
     output_prob = []
     start = time.time()
     initial_time = start
     temp = start
 
-    tensor_src_idx = torch.tensor(p.src_idx).to(device)
-    tensor_trg_idx = torch.tensor(p.trg_idx).to(device)
-
+    train_src_idx = p.train_src_idx
+    train_trg_idx = p.train_trg_idx
     for epoch in range(num_epoch):
         print("{} epoch".format(epoch+1))
 
         #Make Random Batch
-        rands = np.arange(num_sen)
+        rands = np.arange(len(train_src_idx))
         np.random.shuffle(rands)
 
-        src = tensor_src_idx[rands]
-        trg = tensor_trg_idx[rands]
+        src = train_src_idx[rands]
+        trg = train_trg_idx[rands]
         src_batch = []
         trg_batch = []
+
         for i in range(int(len(src)/batch_size)):
             src_batch.append(src[i*batch_size:(i+1)*batch_size])
             trg_batch.append(trg[i*batch_size:(i+1)*batch_size])
 
-        #print("src batch # is {}".format(len(src_batch)))
-        #print("trg batch # is {}".format(len(trg_batch)))
         for i in range(len(src_batch)):
+            #print(len(src_batch))
             if scheduler:
                 step_num = step_num + 1
                 scheduler.step(step_num)
@@ -86,14 +97,7 @@ def train(p, transformer, print_term=1):
 
             opt.zero_grad()
             preds = transformer(src_batch[i], trg_batch[i])
-            
-            
-            #loss = F.cross_entropy(preds.view(-1,preds.size(-1)), torch.tensor(trg_batch[i], dtype=torch.long).view(-1).to(device), ignore_index=0) #0: <BNK>
 
-            #print("preds's size {}".format(preds.view(-1,preds.size(-1)).size())) #(batch_size * max_len) * vocab num
-            #print("trg's size {}".format(torch.tensor(trg_batch[i], dtype=torch.long).view(-1).size())) # batch_size * max_len
-            
-            #loss = F.cross_entropy(preds.view(-1,preds.size(-1)), torch.tensor(trg_batch[i], dtype=torch.long).view(-1).to(device))
             loss = F.cross_entropy(preds.view(-1,preds.size(-1)), trg_batch[i].view(-1).to(device))
 
             loss.backward()
@@ -108,7 +112,3 @@ def train(p, transformer, print_term=1):
                 print("loss avg is {}".format(loss_avg))
                 total_loss = 0
                 temp = time.time()
-            
-    
-
-    #transformer(src_batch[0], trg_batch[0])

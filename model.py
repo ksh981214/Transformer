@@ -39,18 +39,16 @@ class Transformer(nn.Module):
     def get_embedded_batch(self, sen_batch, embedding):
         '''
             sen_batch: Tensor, sentence by idx, batch_size x max_len
-            output: batch_size x max_len x model_dim
+            output: Tensor, batch_size x max_len x model_dim
         '''
-        #embedded_batch=embedding(torch.tensor(sen_batch, dtype= torch.long))
-        embedded_batch=embedding(sen_batch)
-        
+        embedded_batch=embedding(sen_batch).to(device)
         return embedded_batch
 
     def get_positional_encoding(self, max_len, model_dim):
         '''
             PE : max_len x model_dim , it is learned
         '''
-        PE = torch.zeros(max_len, model_dim, dtype=torch.float32)
+        PE = torch.zeros(max_len, model_dim, dtype=torch.float32).to(device)
         for pos in range(max_len): 
             for i in range(0, model_dim, 2):
                 PE[pos,i] = math.sin(pos/(10000 ** ((2*i)/model_dim)))
@@ -61,17 +59,15 @@ class Transformer(nn.Module):
         '''
             Get Embedded Batch --> Add Positional Encoding --> Encoder 
             Get Embedded Batch --> Add Positional Encoding --> Decoder --> Linear --> Softmax --> Output Probabilities
-
             src : Tensor, batch_size x max_len
             trg : Tensor, batch_size x max_len
         '''
         src = self.get_embedded_batch(src, self.src_embedding) # batch_size x max_len x model_dim
         trg = self.get_embedded_batch(trg, self.trg_embedding) # batch_size x max_len x model_dim
-        #print("Get Eembedded Batch!")
-        #print("src Size: {}".format(src.size()))
-        #print("trg Size: {}".format(trg.size()))
+
         #Add Positional Encoding
-        for i in range(self.batch_size):
+    
+        for i in range(src.size()[0]):
             src[i] = src[i] + self.encoder_pe
             trg[i] = trg[i] + self.decoder_pe
 
@@ -83,15 +79,10 @@ class Transformer(nn.Module):
 
         #Decoder
         for i in range(self.N):
-            trg = self.decoder(trg, encoded_output[i])
-        
-        #print("trg size:",trg.size())
+            #trg = self.decoder(trg, encoded_output[i])
+            trg = self.decoder(trg, src)
+
         output = self.linear(trg)
-        #print("linear size:",output.size())
         output = self.softmax(output)
-        #print(output.size())
-        #print(output[0].size())
-        ##print(output[0][0].size())
-        #print("output's first row's sum is {}".format(torch.sum(output[0,0,:])))
 
         return output

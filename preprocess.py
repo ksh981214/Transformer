@@ -14,20 +14,28 @@ class Preprocess():
         self.max_len=config.max_len
         self.lower_case = config.lower_case
 
+        start = time.time()
+
         src = open(src_path,'r',encoding='utf-8')
         trg = open(trg_path,'r',encoding='utf-8')
         
-        print("Data Loading Finish!")
+        print("Finish Data Loading")
+        print("Consume Time: {}".format(time.time()-start))
+        temp = time.time()
         
         src_lines=src.readlines() #2007723
         trg_lines=trg.readlines() #2007723
 
         #임시    
-        src_lines = src_lines[:96]
-        trg_lines = trg_lines[:96]
+        src_lines = src_lines[:32*100]
+        trg_lines = trg_lines[:32*100]
 
-        print("Tokenizing Sentence...")
-        
+        print("Finish Data Reading")
+        print("Data len: {}".format(len(src_lines)))
+        print("Consume Time: {}".format(time.time()-temp))
+        temp = time.time()
+
+        #Tokenizing Sentence...
         tokenizer = TreebankWordTokenizer()
         r = re.compile("[A-Za-z0-9]") #특수문자 제거
         
@@ -45,19 +53,41 @@ class Preprocess():
         src_vocab = set(src_processed)
         trg_vocab = set(trg_processed)
 
-        self.src_word2ind, self.src_ind2word = self.make_mapping(src_vocab, EOS=True, UNK=True, SOS=False, BNK=True)
-        self.trg_word2ind, self.trg_ind2word = self.make_mapping(trg_vocab, EOS=True, UNK=True, SOS=True, BNK=True)
+        print("Finish Tokenizing Sentence")
+        print("Consume Time: {}".format(time.time()-temp))
+        temp = time.time()
+
+        self.src_word2ind, self.src_ind2word = self.make_mapping(src_vocab, BNK=True, EOS=True, UNK=True, SOS=False)
+        self.trg_word2ind, self.trg_ind2word = self.make_mapping(trg_vocab, BNK=True, EOS=True, UNK=True, SOS=True)
 
         print("src wor2ind # is {}".format(len(self.src_word2ind))) #5175(10000문장 기준)
         print("trg wor2ind # is {}".format(len(self.trg_word2ind))) #6547
-        
-        print("Making Sentence By Idx...")
+        print("Finish Mapping Sentence")
+        print("Consume Time: {}".format(time.time()-temp))
+        temp = time.time()
         
         #Sentence by Word Idx
-        self.src_idx = self.make_idx_sen(src_lines_tokenized, self.src_word2ind, EOS=True, UNK=True, SOS=False, BNK=True)
-        self.trg_idx = self.make_idx_sen(trg_lines_tokenized, self.trg_word2ind, EOS=True, UNK=True, SOS=True, BNK=True)
+        src_idx = self.make_idx_sen(src_lines_tokenized, self.src_word2ind, BNK=True, EOS=True, UNK=True, SOS=False)
+        trg_idx = self.make_idx_sen(trg_lines_tokenized, self.trg_word2ind, BNK=True, EOS=True, UNK=True, SOS=True)
+
+        num_train_data = int(len(src_idx)*config.train_set)
+    
+        self.train_src_idx = torch.tensor(src_idx[:num_train_data]).to(device)
+        self.train_trg_idx = torch.tensor(trg_idx[:num_train_data]).to(device)
+
+        print("Train set len is {}".format(len(self.train_src_idx)))
+
+        self.test_src_idx = torch.tensor(src_idx[num_train_data:]).to(device)
+        self.test_trg_idx = torch.tensor(trg_idx[num_train_data:]).to(device)
+
+        print("Test set len is {}".format(len(self.test_src_idx)))
         
+        print("Finish Making Sentence By Idx")
+        print("Consume Time: {}".format(time.time()-temp))
+
         print("Preprocess Finish!")
+        print("Total Consume Time: {}".format(time.time()-start))
+
         
     def make_tokenized(self, lines_lst, tokenizer, r = re.compile("[A-Za-z0-9]")):
         '''
@@ -106,12 +136,15 @@ class Preprocess():
 
         return processed
 
-    def make_mapping(self, vocab, EOS, UNK, SOS, BNK):
+    def make_mapping(self, vocab, BNK, EOS, UNK, SOS):
         '''
             vocab: list of all words(Allow Duplicate)
         '''
         word2ind = {}
         i=0
+        if BNK:
+            word2ind['<BNK>']=i
+            i=i+1
         if EOS:
             word2ind['<EOS>']=i
             i=i+1
@@ -120,9 +153,6 @@ class Preprocess():
             i=i+1
         if SOS:
             word2ind['<SOS>']=i
-            i=i+1
-        if BNK:
-            word2ind['<BNK>']=i
             i=i+1
         for sen in vocab:
             for word in sen.split():
@@ -136,7 +166,7 @@ class Preprocess():
         
         return word2ind, ind2word
 
-    def make_idx_sen(self, tokenized, word2ind, EOS, UNK, SOS, BNK):
+    def make_idx_sen(self, tokenized, word2ind, BNK, EOS, UNK, SOS):
         '''
             tokenized: list of all sentences , [[...],[...]]
         '''
