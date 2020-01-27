@@ -17,3 +17,18 @@ Re-implementation of [Attention is All You Need](https://arxiv.org/abs/1706.0376
   - sublayer.py
 - Add&Norm 
   - just use ```python torch.nn.LayerNorm ```
+  
+ 
+## Train
+
+- train.py
+- Techniques used in this paper
+    - Label Smoothing
+    - Learning Rate Scheduling
+    - etc..
+    
+    
+    
+## Test
+
+- Not yet
