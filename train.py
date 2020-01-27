@@ -27,7 +27,7 @@ def train(p, transformer, print_term=1):
     warmup_steps = config.warmup_steps
     scheduler = config.scheduler
 
-    #train mode, the difference exists at Dropout or BatchNormalization
+    #train mode, the difference exists at Dropout or BatchNormalizatio
     transformer.train()
 
     #Xavier Initialization
