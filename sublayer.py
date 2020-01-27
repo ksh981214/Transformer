@@ -26,6 +26,8 @@ class MultiHeadAttention(nn.Module):
     def __init__(self):
         super().__init__()
 
+        self.device=config.device
+
         self.model_dim = config.model_dim
         self.num_heads = config.num_heads
         self.dim_K = config.dim_K
@@ -58,14 +60,14 @@ class MultiHeadAttention(nn.Module):
                 tensor([[0., 1.],
                         [0., 0.]])
             '''
-            tri_mat = torch.tensor(np.triu(np.ones((batch_size, max_len, max_len)), k=1).astype('float32'))
-            mask = torch.ones_like(tri_mat) * -1.0e9
-            QKT = torch.where(torch.eq(tri_mat,0),QKT, mask)    #if tri_mat == 0 then QKT, else -1.0e9
+            tri_mat = torch.tensor(np.triu(np.ones((batch_size, max_len, max_len)), k=1).astype('float32')).to(self.device)
+            mask = torch.ones_like(tri_mat).to(self.device) * -1.0e9
+            QKT = torch.where(torch.eq(tri_mat,0),QKT, mask).to(self.device)    #if tri_mat == 0 then QKT, else -1.0e9
             
         s = torch.nn.Softmax(dim=2)
-        softmax = s(QKT)
+        softmax = s(QKT).to(self.device)
         
-        output = torch.matmul(softmax,V)    # batch_size x max_len x dim_V
+        output = torch.matmul(softmax,V).to(self.device)    # batch_size x max_len x dim_V
         return output 
 
     def forward(self, inputs, masking=False, encoded_output=None):

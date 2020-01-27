@@ -2,6 +2,8 @@ import nltk #Tokenizer 사용을 위해
 from nltk.tokenize import TreebankWordTokenizer
 
 import re #정규표현식 사용
+import time
+import torch
 
 from collections import Counter
 from config import config
@@ -13,6 +15,7 @@ class Preprocess():
     def __init__(self, src_path, trg_path):
         self.max_len=config.max_len
         self.lower_case = config.lower_case
+        
 
         start = time.time()
 
@@ -72,13 +75,13 @@ class Preprocess():
 
         num_train_data = int(len(src_idx)*config.train_set)
     
-        self.train_src_idx = torch.tensor(src_idx[:num_train_data]).to(device)
-        self.train_trg_idx = torch.tensor(trg_idx[:num_train_data]).to(device)
+        self.train_src_idx = torch.tensor(src_idx[:num_train_data]).to(config.device)
+        self.train_trg_idx = torch.tensor(trg_idx[:num_train_data]).to(config.device)
 
         print("Train set len is {}".format(len(self.train_src_idx)))
 
-        self.test_src_idx = torch.tensor(src_idx[num_train_data:]).to(device)
-        self.test_trg_idx = torch.tensor(trg_idx[num_train_data:]).to(device)
+        self.test_src_idx = torch.tensor(src_idx[num_train_data:]).to(config.device)
+        self.test_trg_idx = torch.tensor(trg_idx[num_train_data:]).to(config.device)
 
         print("Test set len is {}".format(len(self.test_src_idx)))
         

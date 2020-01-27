@@ -41,14 +41,14 @@ class Transformer(nn.Module):
             sen_batch: Tensor, sentence by idx, batch_size x max_len
             output: Tensor, batch_size x max_len x model_dim
         '''
-        embedded_batch=embedding(sen_batch).to(device)
+        embedded_batch=embedding(sen_batch).to(config.device)
         return embedded_batch
 
     def get_positional_encoding(self, max_len, model_dim):
         '''
             PE : max_len x model_dim , it is learned
         '''
-        PE = torch.zeros(max_len, model_dim, dtype=torch.float32).to(device)
+        PE = torch.zeros(max_len, model_dim, dtype=torch.float32).to(config.device)
         for pos in range(max_len): 
             for i in range(0, model_dim, 2):
                 PE[pos,i] = math.sin(pos/(10000 ** ((2*i)/model_dim)))
