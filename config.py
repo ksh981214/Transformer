@@ -30,3 +30,7 @@ class config:
         initial_lr = 0.0001
 
     train_set = 0.9 #test_set=0.1
+    
+    use_save_file = False 
+    want_save_file = True
+    use_file_len = batch_size * 10000 
