@@ -14,8 +14,10 @@ config = config()
 
 class Preprocess():
     def __init__(self, src_path, trg_path):
-        self.max_len=config.max_len
-        self.lower_case = config.lower_case
+        #self.max_len=config.max_len
+        self.lower_case = config.lower_case                     # Want make sentence to lower case?
+        self.use_file_len = config.use_file_len                 # How many sentence?
+        self.sentence_sorting = config.sentence_sorting         # Want to sort sentence by Ascending?
 
         start = time.time()
 
@@ -31,8 +33,8 @@ class Preprocess():
         trg_lines=trg.readlines() #2007723
 
         #임시
-        src_lines = src_lines[:config.use_file_len]
-        trg_lines = trg_lines[:config.use_file_len]
+        src_lines = src_lines[:self.use_file_len]
+        trg_lines = trg_lines[:self.use_file_len]
 
         print("Finish Data Reading")
         print("Data len: {}".format(len(src_lines)))
@@ -45,11 +47,11 @@ class Preprocess():
         r = re.compile("[A-Za-z0-9]") #특수문자 제거
         
         if config.use_save_file:
-            src_lines_tokenized = self.load_file('src', 'tokenized', config.use_file_len)
-            src_corpus = self.load_file('src', 'corpus', config.use_file_len)
+            src_lines_tokenized = self.load_file('src', 'tokenized', self.use_file_len)
+            src_corpus = self.load_file('src', 'corpus', self.use_file_len)
             
-            trg_lines_tokenized = self.load_file('trg', 'tokenized', config.use_file_len)
-            trg_corpus = self.load_file('trg', 'corpus', config.use_file_len)
+            trg_lines_tokenized = self.load_file('trg', 'tokenized', self.use_file_len)
+            trg_corpus = self.load_file('trg', 'corpus', self.use_file_len)
             
             print("Finish Loading Data")
             print("Consume Time: {}".format(time.time()-temp))
@@ -67,10 +69,10 @@ class Preprocess():
             
             if config.want_save_file:
                 #src
-                self.save_file(src_lines_tokenized, 'src','tokenized',config.use_file_len)
-                self.save_file(src_corpus, 'src','corpus',config.use_file_len)
-                self.save_file(trg_lines_tokenized, 'trg','tokenized',config.use_file_len)
-                self.save_file(trg_corpus, 'trg','corpus',config.use_file_len)
+                self.save_file(src_lines_tokenized, 'src','tokenized',self.use_file_len)
+                self.save_file(src_corpus, 'src','corpus',self.use_file_len)
+                self.save_file(trg_lines_tokenized, 'trg','tokenized',self.use_file_len)
+                self.save_file(trg_corpus, 'trg','corpus',self.use_file_len)
                 
                 print("Finish Data Save!")
                 print("Consume Time: {}".format(time.time()-temp))
@@ -78,7 +80,7 @@ class Preprocess():
                 temp = time.time()
         
         #Where file not corrupted
-        if config.use_file_len != len(src_lines_tokenized) or config.use_file_len != len(trg_lines_tokenized):
+        if config.use_file_len != len(src_lines_tokenized) or self.use_file_len != len(trg_lines_tokenized):
             raise Exception('파일이 손상되었습니다.')
 
         src_frequency = Counter(src_corpus)
@@ -112,14 +114,20 @@ class Preprocess():
         trg_idx = self.make_idx_sen(trg_lines_tokenized, self.trg_word2ind, BNK=True, EOS=True, UNK=True, SOS=True)
 
         num_train_data = int(len(src_idx)*config.train_set)
-    
-        self.train_src_idx = torch.tensor(src_idx[:num_train_data]).to(config.device)
-        self.train_trg_idx = torch.tensor(trg_idx[:num_train_data]).to(config.device)
+        
+        train_src_idx = src_idx[:num_train_data]
+        train_trg_idx = trg_idx[:num_train_data]
+        if self.sentence_sorting:
+            self.train_src_idx = sorted(train_src_idx, key = lambda src_sen: len(src_sen))  # sen is iterable object in train_src_idx
+            self.train_trg_idx = sorted(train_trg_idx, key = lambda trg_sen: len(trg_sen))
+        else:
+            self.train_src_idx = train_src_idx
+            self.train_trg_idx = train_trg_idx
 
         print("Train set len is {}".format(len(self.train_src_idx)))
 
-        self.test_src_idx = torch.tensor(src_idx[num_train_data:]).to(config.device)
-        self.test_trg_idx = torch.tensor(trg_idx[num_train_data:]).to(config.device)
+        self.test_src_idx = src_idx[num_train_data:]
+        self.test_trg_idx = trg_idx[num_train_data:]
 
         print("Test set len is {}".format(len(self.test_src_idx)))
         
@@ -240,12 +248,7 @@ class Preprocess():
                 else:
                     new_sen.append(word2ind['<UNK>'])
             new_sen.append(word2ind['<EOS>'])
-            if len(new_sen) < self.max_len:
-                while len(new_sen)!=self.max_len:
-                    new_sen.append(word2ind['<BNK>'])
-            #if len > max_len, then cut..
-            if len(new_sen) > self.max_len:
-                new_sen = new_sen[:self.max_len]
+
             idx_sen.append(new_sen)
             
         return idx_sen

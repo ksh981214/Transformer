@@ -6,7 +6,9 @@ import torch.nn.functional as F
 import numpy as np
 import time
 
-def train(p, transformer, print_term=1):
+import copy
+
+def train(p, transformer, print_term= 10):
     '''
         p: preprocess object
         transformer: transformer object
@@ -20,6 +22,40 @@ def train(p, transformer, print_term=1):
         Ignore Index?
         Control Learning Rate
     '''
+
+    device = config.device
+    batch_size = config.batch_size
+    num_epoch = config.num_epoch
+    model_dim = config.model_dim
+    label_smoothing = config.label_smoothing
+    if label_smoothing:
+        eps_ls = config.eps_ls
+
+    def put_padding(batch, word2ind):
+        '''
+            batch   :   * x batch_size x length x model_dim
+        '''
+        for i in range(len(batch)):
+            # get max_len
+            max_len = 0
+            for sen in batch[i]:
+                if len(sen)>max_len:
+                    max_len = len(sen)
+                else:
+                    pass
+            
+            # put padding
+            for j in range(len(batch[i])):
+                sen = batch[i][j]
+                if len(sen) < max_len:
+                    while len(sen)!=max_len:
+                        sen.append(word2ind['<BNK>'])
+                # convert to tensor
+
+            batch[i] = torch.tensor(batch[i]).to(device)
+
+        return batch
+
     def restore_sentence(idxs, idx2word):
         '''
             idxs: sentence by idxs
@@ -34,12 +70,22 @@ def train(p, transformer, print_term=1):
             else:
                 sen.append(word)
         return sen
-    device = config.device
-    batch_size = config.batch_size
-    num_epoch = config.num_epoch
-    model_dim = config.model_dim
-    warmup_steps = config.warmup_steps
+
+    if label_smoothing:
+        def make_label_smoothing(sen, class_num, alpha):
+            '''
+                a: hypyer_parameter(ex: 0.1, 0.9..)
+                new_onehot_labels = (1-a) * y_hot + a/K 
+            '''
+            #print("before:{}".format(sen))
+
+            smoothing_sen = list((1-alpha)*np.array(sen) + alpha/class_num)
+            #print("after:{}".format(sen))
+            return smoothing_sen
+
     scheduler = config.scheduler
+    if scheduler:
+        warmup_steps = config.warmup_steps
 
     #train mode, the difference exists at Dropout or BatchNormalization
     transformer.train()
@@ -70,24 +116,40 @@ def train(p, transformer, print_term=1):
     initial_time = start
     temp = start
 
-    train_src_idx = p.train_src_idx
-    train_trg_idx = p.train_trg_idx
+    src = p.train_src_idx     #list
+    trg = p.train_trg_idx     #list
+    
+    
+    #Label_Smoothing
+    if label_smoothing:
+        smoothing_trg = copy.deepcopy(trg)
+        print("Start Making Label Smoothing")
+        start = time.time()
+        for i in range(len(smoothing_trg)):
+            smoothing_trg[i] = make_label_smoothing(smoothing_trg[i], len(p.trg_word2ind), eps_ls)
+        print("Finish Making Label Smoothing")
+        print("Consume Time: {}".format(time.time()-start))
+        
+    src_batch = []
+    trg_batch = []
+    if label_smoothing:
+        smoothing_trg_batch =[]
+
+    for i in range(int(len(src)/batch_size)):
+        src_batch.append(src[i*batch_size:(i+1)*batch_size])
+        trg_batch.append(trg[i*batch_size:(i+1)*batch_size])
+        if label_smoothing:
+            smoothing_trg_batch.append(smoothing_trg[i*batch_size:(i+1)*batch_size])
+
+    src_batch = put_padding(src_batch, p.src_word2ind)
+    trg_batch = put_padding(trg_batch, p.trg_word2ind)
+    if label_smoothing:
+        smoothing_trg_batch = put_padding(smoothing_trg_batch, p.trg_word2ind)
+
     for epoch in range(num_epoch):
+        epoch_start = time.time()
         print("{} epoch".format(epoch+1))
-
-        #Make Random Batch
-        rands = np.arange(len(train_src_idx))
-        np.random.shuffle(rands)
-
-        src = train_src_idx[rands]
-        trg = train_trg_idx[rands]
-        src_batch = []
-        trg_batch = []
-
-        for i in range(int(len(src)/batch_size)):
-            src_batch.append(src[i*batch_size:(i+1)*batch_size])
-            trg_batch.append(trg[i*batch_size:(i+1)*batch_size])
-
+        epoch_loss = 0
         for i in range(len(src_batch)):
             #print(len(src_batch))
             if scheduler:
@@ -96,19 +158,26 @@ def train(p, transformer, print_term=1):
                 print('lr={}'.format(scheduler.get_lr()))
 
             opt.zero_grad()
+
+            #print("src_batch max_len is {}".format(len(src_batch[i][0])))
+            #print(trg_batch[i])
             preds = transformer(src_batch[i], trg_batch[i])
 
-            loss = F.cross_entropy(preds.view(-1,preds.size(-1)), trg_batch[i].view(-1).to(device))
+            if label_smoothing:
+                loss = F.cross_entropy(preds.view(-1,preds.size(-1)), smoothing_trg_batch[i].view(-1))
+            else:
+                loss = F.cross_entropy(preds.view(-1,preds.size(-1)), trg_batch[i].view(-1))
 
             loss.backward()
             opt.step()
 
             total_loss = total_loss + loss
-
+            epoch_loss = epoch_loss + loss
             if (i+1) % print_term == 0:
                 loss_avg = total_loss / print_term
-                #print("Total Consume time is {}".format(time.time()-initial_time))
-                #print("{} batch Consume time is {}".format(print_term, time.time()-temp))
-                print("loss avg is {}".format(loss_avg))
+                print("{} Batch Loss Avg is {}".format(print_term, loss_avg))
                 total_loss = 0
-                temp = time.time()
+        # print Epoch loss
+        print("Epoch Loss Avg is {}".format(epoch_loss/len(src_batch)))
+        print("Consume time per this epoch is {}".format(time.time()-epoch_start))
+        epoch_loss = 0

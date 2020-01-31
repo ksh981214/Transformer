@@ -17,17 +17,16 @@ class Encoder(nn.Module):
             FeedForward: 1 
         '''
         self.batch_size = config.batch_size
-        self.max_len=config.max_len
         self.model_dim = config.model_dim
         self.p_drop = config.p_drop
 
         self.dropout = nn.Dropout(self.p_drop)
 
         self.mha = MultiHeadAttention()
-        self.ann1 = nn.LayerNorm([self.batch_size, self.max_len, self.model_dim])
+        self.ann1 = nn.LayerNorm([self.model_dim])
 
         self.ff = FeedForward()
-        self.ann2 = nn.LayerNorm([self.batch_size, self.max_len, self.model_dim])
+        self.ann2 = nn.LayerNorm([self.model_dim])
 
     def forward(self, inputs):
         '''
@@ -56,21 +55,19 @@ class Decoder(nn.Module):
             FeedForward: 1 
         '''
         self.batch_size = config.batch_size
-        self.max_len=config.max_len
         self.model_dim = config.model_dim
         self.p_drop = config.p_drop
 
         self.dropout = nn.Dropout(self.p_drop)
 
         self.masked_mha = MultiHeadAttention()
-        self.ann1 = nn.LayerNorm([self.batch_size, self.max_len, self.model_dim])
+        self.ann1 = nn.LayerNorm([self.model_dim])
 
         self.mha = MultiHeadAttention()
-        self.ann2 = nn.LayerNorm([self.batch_size, self.max_len, self.model_dim])
+        self.ann2 = nn.LayerNorm([self.model_dim])
 
         self.ff = FeedForward()
-        self.ann3 = nn.LayerNorm([self.batch_size, self.max_len, self.model_dim])
-        
+        self.ann3 = nn.LayerNorm([self.model_dim])
     def forward(self, inputs, encoded_output):
         '''
             Masked MultiHeadAttention --> Add&LayerNorm --> MultiHeadAttention --> Add&LayerNorm --> FeedForward --> Add&LayerNorm

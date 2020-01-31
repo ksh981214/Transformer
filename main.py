@@ -17,6 +17,6 @@ def main():
 
     train(p, transformer)
     
-    test(p,transformer)
+    #test(p,transformer)
     
 main()
