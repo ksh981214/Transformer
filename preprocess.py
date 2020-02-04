@@ -86,8 +86,8 @@ class Preprocess():
         src_frequency = Counter(src_corpus)
         trg_frequency = Counter(trg_corpus)
 
-        src_processed = self.delte_rare_word(src_corpus, src_frequency, 2)
-        trg_processed = self.delte_rare_word(trg_corpus, trg_frequency, 2)
+        src_processed = self.delte_rare_word(src_corpus, src_frequency, 0)
+        trg_processed = self.delte_rare_word(trg_corpus, trg_frequency, 0)
 
         src_frequency = Counter(src_processed)
         trg_frequency = Counter(trg_processed)
@@ -99,7 +99,7 @@ class Preprocess():
         print("")
         temp = time.time()
 
-        self.src_word2ind, self.src_ind2word = self.make_mapping(src_vocab, BNK=True, EOS=True, UNK=True, SOS=False)
+        self.src_word2ind, self.src_ind2word = self.make_mapping(src_vocab, BNK=True, EOS=True, UNK=True, SOS=True)
         self.trg_word2ind, self.trg_ind2word = self.make_mapping(trg_vocab, BNK=True, EOS=True, UNK=True, SOS=True)
 
         print("src wor2ind # is {}".format(len(self.src_word2ind))) #5175(10000문장 기준)
@@ -110,7 +110,7 @@ class Preprocess():
         temp = time.time()
         
         #Sentence by Word Idx
-        src_idx = self.make_idx_sen(src_lines_tokenized, self.src_word2ind, BNK=True, EOS=True, UNK=True, SOS=False)
+        src_idx = self.make_idx_sen(src_lines_tokenized, self.src_word2ind, BNK=True, EOS=True, UNK=True, SOS=True)
         trg_idx = self.make_idx_sen(trg_lines_tokenized, self.trg_word2ind, BNK=True, EOS=True, UNK=True, SOS=True)
 
         num_train_data = int(len(src_idx)*config.train_set)
@@ -197,7 +197,7 @@ class Preprocess():
         '''
         processed = []
         for w in corpus:
-            if freq[w]>2:
+            if freq[w]>cnt:
                 processed.append(w)
 
         return processed

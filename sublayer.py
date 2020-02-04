@@ -27,7 +27,6 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
 
         self.device=config.device
-
         self.model_dim = config.model_dim
         self.num_heads = config.num_heads
         self.dim_K = config.dim_K
@@ -93,9 +92,8 @@ class MultiHeadAttention(nn.Module):
         for (i,split) in enumerate(Q_split):
             result_lst.append(self.attention(Q_split[i],K_split[i],V_split[i],masking))
 
-
         #Concat
-        concat = torch.cat(result_lst,dim=2) # 32 x 40 x 512
-        output = self.output_linear(concat)
+        concat = torch.cat(result_lst,dim=2) 
+        output = self.output_linear(concat) # batch_size x max_len x model_dim
 
         return output

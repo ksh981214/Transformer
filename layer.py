@@ -32,17 +32,15 @@ class Encoder(nn.Module):
         '''
             MultiHeadAttention --> Add&LayerNorm --> FeedForward --> Add&LayerNorm
         '''
-        x = inputs.clone()
-        output = self.mha(inputs, masking=False, encoded_output=None)
-        output = self.dropout(output)
-        output = self.ann1(x+output)
+        x = inputs
 
-        x = output.clone()
-        output = self.ff(inputs)
-        output = self.dropout(output)
-        output = self.ann2(x+output)
+        # MultiHeadAttention
+        x = self.ann1(x+self.dropout(self.mha(x, masking=False, encoded_output=None)))
 
-        return output
+        # FeedForward
+        x = self.ann2(x+self.dropout(self.ff(x)))
+
+        return x
 
     
 class Decoder(nn.Module):
@@ -72,19 +70,16 @@ class Decoder(nn.Module):
         '''
             Masked MultiHeadAttention --> Add&LayerNorm --> MultiHeadAttention --> Add&LayerNorm --> FeedForward --> Add&LayerNorm
         '''
-        x = inputs.clone()
-        output = self.masked_mha(inputs, masking=True, encoded_output=None)
-        output = self.dropout(output)
-        output = self.ann1(x+output)
 
-        x = output.clone()
-        output = self.mha(inputs, masking=False, encoded_output=encoded_output)
-        output = self.dropout(output)
-        output = self.ann2(x+output)
+        x = inputs
 
-        x = output.clone()
-        output = self.ff(inputs)
-        output = self.dropout(output)
-        output = self.ann3(x+output)
+        # Masked MultiHead Attention
+        x = self.ann1(x+self.dropout(self.masked_mha(x, masking=True, encoded_output=None)))
 
-        return output
+        # MultiHead Attention
+        x = self.ann2(x+self.dropout(self.mha(x, masking=False, encoded_output=encoded_output)))
+
+        # FeedForward
+        x = self.ann3(x+self.dropout(self.ff(x)))
+
+        return x

@@ -19,18 +19,15 @@ class config:
     beta2=0.98
     eps=10e-9
 
-    scheduler = False
+    initial_lr = 1e-5
+    scheduler = True
     if scheduler:
-        initial_lr = 1
         warmup_steps=4000
-        step_num = 1
-    else:
-        initial_lr = 0.000001
 
     train_set = 0.9                     #test_set=0.1
     
-    use_save_file = True
-    want_save_file = False
+    use_save_file = False
+    want_save_file = True
     use_file_len = batch_size * 100
 
     '''
@@ -42,4 +39,4 @@ class config:
     sentence_sorting= True
     label_smoothing = False
     if label_smoothing:
-        eps_ls=0.1    
+        eps_ls=0.1                      

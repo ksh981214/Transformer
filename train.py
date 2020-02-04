@@ -8,7 +8,7 @@ import time
 
 import copy
 
-def train(p, transformer, print_term= 10):
+def train(p, transformer, print_term= 20):
     '''
         p: preprocess object
         transformer: transformer object
@@ -50,8 +50,7 @@ def train(p, transformer, print_term= 10):
                 if len(sen) < max_len:
                     while len(sen)!=max_len:
                         sen.append(word2ind['<BNK>'])
-                # convert to tensor
-
+            # convert to tensor
             batch[i] = torch.tensor(batch[i]).to(device)
 
         return batch
@@ -91,9 +90,9 @@ def train(p, transformer, print_term= 10):
     transformer.train()
 
     #Xavier Initialization
-    for param in transformer.parameters():
-        if param.dim()>1:
-            nn.init.xavier_uniform_(param)
+    # for param in transformer.parameters():
+    #     if param.dim()>1:
+    #         nn.init.xavier_uniform_(param)
     
     initial_lr = config.initial_lr
     beta1=config.beta1
@@ -103,8 +102,8 @@ def train(p, transformer, print_term= 10):
     opt = torch.optim.Adam(transformer.parameters(), lr=initial_lr, betas=(beta1, beta2), eps=eps)
 
     if scheduler:
-        step_num = 0
-        f = lambda step_num:model_dim**(-0.5) * torch.min(torch.tensor([(step_num+1)**(-0.5), (step_num+1)*warmup_steps**(-1.5)]))
+        step_num = 1
+        f = lambda step_num:(1e+4)*model_dim**(-0.5) * torch.min(torch.tensor([(step_num+1)**(-0.5), (step_num+1)*warmup_steps**(-1.5)]))
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer=opt, lr_lambda=f)
 
     #Start Epoch
@@ -119,7 +118,6 @@ def train(p, transformer, print_term= 10):
     src = p.train_src_idx     #list
     trg = p.train_trg_idx     #list
     
-    
     #Label_Smoothing
     if label_smoothing:
         smoothing_trg = copy.deepcopy(trg)
@@ -129,7 +127,7 @@ def train(p, transformer, print_term= 10):
             smoothing_trg[i] = make_label_smoothing(smoothing_trg[i], len(p.trg_word2ind), eps_ls)
         print("Finish Making Label Smoothing")
         print("Consume Time: {}".format(time.time()-start))
-        
+
     src_batch = []
     trg_batch = []
     if label_smoothing:
@@ -152,31 +150,35 @@ def train(p, transformer, print_term= 10):
         epoch_loss = 0
         for i in range(len(src_batch)):
             #print(len(src_batch))
-            if scheduler:
-                step_num = step_num + 1
-                scheduler.step(step_num)
-                print('lr={}'.format(scheduler.get_lr()))
 
             opt.zero_grad()
 
-            #print("src_batch max_len is {}".format(len(src_batch[i][0])))
-            #print(trg_batch[i])
             preds = transformer(src_batch[i], trg_batch[i])
 
             if label_smoothing:
-                loss = F.cross_entropy(preds.view(-1,preds.size(-1)), smoothing_trg_batch[i].view(-1))
+                loss = F.cross_entropy(preds.view(-1,preds.size(-1)), smoothing_trg_batch[i].view(-1), ignore_index=transformer.src_word2ind['<BNK>'])
             else:
                 loss = F.cross_entropy(preds.view(-1,preds.size(-1)), trg_batch[i].view(-1))
 
             loss.backward()
             opt.step()
-
+            if scheduler:
+                scheduler.step()
+                
             total_loss = total_loss + loss
             epoch_loss = epoch_loss + loss
             if (i+1) % print_term == 0:
                 loss_avg = total_loss / print_term
                 print("{} Batch Loss Avg is {}".format(print_term, loss_avg))
+                print("Learning Rate={}".format(opt.param_groups[0]['lr']))
                 total_loss = 0
+                print(src_batch[i][0])
+                print()
+                print(trg_batch[i][0])
+                print()
+                print(preds[0])
+                print(torch.argmax(preds[0], dim=1))
+                print("------------------------------")
         # print Epoch loss
         print("Epoch Loss Avg is {}".format(epoch_loss/len(src_batch)))
         print("Consume time per this epoch is {}".format(time.time()-epoch_start))
