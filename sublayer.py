@@ -59,9 +59,12 @@ class MultiHeadAttention(nn.Module):
                 tensor([[0., 1.],
                         [0., 0.]])
             '''
-            tri_mat = torch.tensor(np.triu(np.ones((batch_size, max_len, max_len)), k=1).astype('float32')).to(self.device)
-            mask = torch.ones_like(tri_mat).to(self.device) * -1.0e9
-            QKT = torch.where(torch.eq(tri_mat,0),QKT, mask).to(self.device)    #if tri_mat == 0 then QKT, else -1.0e9
+            mask = torch.triu(torch.ones(batch_size, max_len, max_len),diagonal=1)*(-1.0e9)
+            mask = mask.to(self.device)
+            #tri_mat = torch.tensor(np.triu(np.ones((batch_size, max_len, max_len)), k=1).astype('float32')).to(self.device)
+            #mask = torch.ones_like(tri_mat).to(self.device) * -1.0e9
+            #QKT = torch.where(torch.eq(tri_mat,0),QKT, mask).to(self.device)    #if tri_mat == 0 then QKT, else -1.0e9
+            QKT = QKT + mask
             
         s = torch.nn.Softmax(dim=2)
         softmax = s(QKT).to(self.device)

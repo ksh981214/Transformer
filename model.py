@@ -11,6 +11,7 @@ class Transformer(nn.Module):
     def __init__(self, src_word2idx, trg_word2idx):
         super().__init__()
 
+        self.device = config.device
         self.batch_size = config.batch_size
         self.model_dim = config.model_dim
         self.N = config.N
@@ -31,12 +32,15 @@ class Transformer(nn.Module):
         self.linear = nn.Linear(self.dim_K * self.num_heads, len(self.trg_word2idx))
         self.softmax = torch.nn.Softmax(dim=2)
 
+        #Translate
+        self.max_len = config.translate_max_len
+
     def get_embedded_batch(self, sen_batch, embedding):
         '''
             sen_batch: Tensor, sentence by idx, batch_size x max_len
             output: Tensor, batch_size x max_len x model_dim
         '''
-        embedded_batch=embedding(sen_batch).to(config.device)
+        embedded_batch=embedding(sen_batch)
         return embedded_batch
 
     def add_positional_encoding(self, sen, max_len, model_dim):
@@ -44,7 +48,7 @@ class Transformer(nn.Module):
             sen : batch_size x max_len x model_dim
             PE  : max_len x model_dim
         '''
-        PE = torch.zeros(sen.size()[1], model_dim, dtype=torch.float32).to(config.device)
+        PE = torch.zeros(sen.size()[1], model_dim, dtype=torch.float32).to(self.device)
 
         # Positional Encoding Initialization
         for pos in range(PE.size()[0]):                                         # max_len
@@ -65,8 +69,8 @@ class Transformer(nn.Module):
             src : Tensor, batch_size x max_len
             trg : Tensor, batch_size x max_len
         '''
-        src = self.get_embedded_batch(src, self.src_embedding) # batch_size x max_len x model_dim
-        trg = self.get_embedded_batch(trg, self.trg_embedding) # batch_size x max_len x model_dim
+        src = self.get_embedded_batch(src, self.src_embedding).to(config.device) # batch_size x max_len x model_dim
+        trg = self.get_embedded_batch(trg, self.trg_embedding).to(config.device) # batch_size x max_len x model_dim
 
         #Add Positional Encoding
         src = self.add_positional_encoding(src, src.size()[1], src.size()[2])
@@ -86,3 +90,4 @@ class Transformer(nn.Module):
         output = self.softmax(output)
 
         return output
+            

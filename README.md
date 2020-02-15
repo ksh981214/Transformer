@@ -26,15 +26,11 @@ Re-implementation of [Attention is All You Need](https://arxiv.org/abs/1706.0376
 
 - train.py
 - Techniques used in this paper
-    - Label Smoothing(Not Yet)
-    - Learning Rate Scheduling(Done)
+    - Label Smoothing
+    - Learning Rate Scheduling
     - etc..
-
-## Test
-
-- Not yet
 
 ## Future Work
 
-- Label Smoothing
-- 
+- Make Test Code(Why don't work at Shifted Right?)
+- Use More Bigger Data

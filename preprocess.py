@@ -14,7 +14,6 @@ config = config()
 
 class Preprocess():
     def __init__(self, src_path, trg_path):
-        #self.max_len=config.max_len
         self.lower_case = config.lower_case                     # Want make sentence to lower case?
         self.use_file_len = config.use_file_len                 # How many sentence?
         self.sentence_sorting = config.sentence_sorting         # Want to sort sentence by Ascending?
@@ -31,6 +30,16 @@ class Preprocess():
         
         src_lines=src.readlines() #2007723
         trg_lines=trg.readlines() #2007723
+
+        temp1=[]
+        temp2=[]
+        for i in range(len(src_lines)):
+            if len(src_lines[i]) > 4:
+                temp1.append(src_lines[i])
+                temp2.append(trg_lines[i])
+
+        src_lines = temp1
+        trg_lines = temp2
 
         #임시
         src_lines = src_lines[:self.use_file_len]
@@ -86,8 +95,8 @@ class Preprocess():
         src_frequency = Counter(src_corpus)
         trg_frequency = Counter(trg_corpus)
 
-        src_processed = self.delte_rare_word(src_corpus, src_frequency, 0)
-        trg_processed = self.delte_rare_word(trg_corpus, trg_frequency, 0)
+        src_processed = self.delte_rare_word(src_corpus, src_frequency, config.delete_thres)
+        trg_processed = self.delte_rare_word(trg_corpus, trg_frequency, config.delete_thres)
 
         src_frequency = Counter(src_processed)
         trg_frequency = Counter(trg_processed)
@@ -102,8 +111,8 @@ class Preprocess():
         self.src_word2ind, self.src_ind2word = self.make_mapping(src_vocab, BNK=True, EOS=True, UNK=True, SOS=True)
         self.trg_word2ind, self.trg_ind2word = self.make_mapping(trg_vocab, BNK=True, EOS=True, UNK=True, SOS=True)
 
-        print("src wor2ind # is {}".format(len(self.src_word2ind))) #5175(10000문장 기준)
-        print("trg wor2ind # is {}".format(len(self.trg_word2ind))) #6547
+        print("src wor2ind # is {}".format(len(self.src_word2ind))) 
+        print("trg wor2ind # is {}".format(len(self.trg_word2ind))) 
         print("Finish Mapping Sentence")
         print("Consume Time: {}".format(time.time()-temp))
         print("")
@@ -111,23 +120,29 @@ class Preprocess():
         
         #Sentence by Word Idx
         src_idx = self.make_idx_sen(src_lines_tokenized, self.src_word2ind, BNK=True, EOS=True, UNK=True, SOS=True)
-        trg_idx = self.make_idx_sen(trg_lines_tokenized, self.trg_word2ind, BNK=True, EOS=True, UNK=True, SOS=True)
+        trg_idx = self.make_idx_sen(trg_lines_tokenized, self.trg_word2ind, BNK=True, EOS=True, UNK=True, SOS=False)
+        nosos_trg_idx = self.make_idx_sen(trg_lines_tokenized, self.trg_word2ind, BNK=True, EOS=True, UNK=True, SOS=False)
 
         num_train_data = int(len(src_idx)*config.train_set)
         
         train_src_idx = src_idx[:num_train_data]
         train_trg_idx = trg_idx[:num_train_data]
+        train_nosos_trg_idx = nosos_trg_idx[:num_train_data]
+
         if self.sentence_sorting:
             self.train_src_idx = sorted(train_src_idx, key = lambda src_sen: len(src_sen))  # sen is iterable object in train_src_idx
             self.train_trg_idx = sorted(train_trg_idx, key = lambda trg_sen: len(trg_sen))
+            self.train_nosos_trg_idx = sorted(train_nosos_trg_idx, key = lambda trg_sen: len(trg_sen))
         else:
             self.train_src_idx = train_src_idx
             self.train_trg_idx = train_trg_idx
+            self.train_nosos_trg_idx = train_nosos_trg_idx
 
         print("Train set len is {}".format(len(self.train_src_idx)))
 
         self.test_src_idx = src_idx[num_train_data:]
         self.test_trg_idx = trg_idx[num_train_data:]
+        self.test_nosos_trg_idx = nosos_trg_idx[num_train_data:]
 
         print("Test set len is {}".format(len(self.test_src_idx)))
         

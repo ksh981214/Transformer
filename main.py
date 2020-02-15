@@ -9,7 +9,6 @@ config = config()
 def main():
     device = config.device
     
-    
     p = Preprocess("data/europarl-v7.fr-en.en", "data/europarl-v7.fr-en.fr")
     
     transformer = Transformer(p.src_word2ind, p.trg_word2ind)
